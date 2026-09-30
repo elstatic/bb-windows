@@ -42,6 +42,7 @@ const options = {
 };
 for (const [input, output] of [
   [resolve(root, "src/main.ts"), "main.cjs"],
+  [resolve(root, "src/wsl-browser-helper.ts"), "wsl-browser-helper.cjs"],
   [resolve(desktop, "src/preload.ts"), "preload.cjs"],
   [resolve(desktop, "src/browser-page-preload.ts"), "browser-page-preload.cjs"],
   [resolve(desktop, "src/find-bar-preload.ts"), "find-bar-preload.cjs"],
@@ -61,7 +62,7 @@ await writeFile(resolve(root, "dist/settings.html"), settingsHtml.replace("PLACE
 await copyFile(resolve(desktop, "assets/icon.png"), resolve(root, "dist/icon.png"));
 await copyFile(resolve(repo, "LICENSE"), resolve(root, "dist/LICENSE"));
 const notices = [];
-for (const name of ["zod", "hono"]) {
+for (const name of ["zod", "hono", "ws"]) {
   notices.push(name + "\n" + await readFile(resolve(root, "node_modules", name, "LICENSE"), "utf8"));
 }
 await writeFile(resolve(root, "dist/THIRD-PARTY-NOTICES.txt"), notices.join("\n\n"));

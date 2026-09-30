@@ -16,6 +16,9 @@ import { DEFAULT_APPLICATION_MENU_ACCELERATORS, resolveApplicationMenuAccelerato
 import * as desktopIpc from "../../desktop/src/desktop-update-ipc.js";
 import * as windowIpc from "../../desktop/src/desktop-window-command-ipc.js";
 import * as browserIpc from "../../desktop/src/desktop-browser-ipc.js";
+import { bbDesktopBrowserTabRefSchema } from "@bb/desktop-contract";
+import { createDesktopBrowserBroker } from "../../desktop/src/desktop-browser-broker.js";
+import { createWslBrowserClient } from "./wsl-browser-client.js";
 import { connectionSchema, connectionUrl, DEFAULT_CONNECTION, readConnection, saveConnection, type ConnectionConfig } from "./config.js";
 import { createConnection, type ConnectionState } from "./connection.js";
 
@@ -71,6 +74,13 @@ async function run() {
     dispatchAppCommand: ({ command, hostWebContentsId }) => webContents.fromId(hostWebContentsId)?.send(windowIpc.BB_DESKTOP_APP_COMMAND_CHANNEL, command),
     focusHostWebContents: id => webContents.fromId(id)?.focus(),
     resolveAppCommand: input => resolveDesktopBrowserAppCommand({ input, keybindings, isMac: false }),
+  });
+  const helperPath = join(userData, "wsl-browser-helper.cjs");
+  await writeFile(helperPath, await readFile(join(root, "wsl-browser-helper.cjs")));
+  const broker = createDesktopBrowserBroker({ manager, product: `Chrome/${process.versions.chrome}` });
+  const browserClient = createWslBrowserClient({
+    broker, helperPath, log,
+    getTarget: () => config ? { serverUrl: config.browserHost?.serverUrl ?? connectionUrl(config), distribution: config.browserHost?.distribution } : null,
   });
   registerDesktopBrowserIpc(manager);
   const findManager = createDesktopFindViewManager({ preloadPath: join(root, "find-bar-preload.cjs") });
@@ -141,6 +151,7 @@ async function run() {
       webPreferences: { preload: join(root, "preload.cjs"), contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: true },
     });
     windows.add(window);
+    broker.registerWindow(window);
     if (saved?.x !== undefined && saved?.y !== undefined) {
       const { screen } = await import("electron");
       const workArea = screen.getDisplayMatching({ x: saved.x, y: saved.y, width: saved.width, height: saved.height }).workArea;
@@ -157,7 +168,7 @@ async function run() {
     window.on("leave-full-screen", () => window.webContents.send(windowIpc.BB_DESKTOP_WINDOW_STATE_CHANGED_CHANNEL, { isFullScreen: false }));
     window.on("close", () => { void writeFile(join(userData, "window.json"), JSON.stringify({ ...window.getNormalBounds(), maximized: window.isMaximized() })).catch(() => {}); });
     const contentsId = window.webContents.id;
-    window.on("closed", () => { windows.delete(window); manager.releaseWindow(contentsId); findManager.releaseWindow(contentsId); });
+    window.on("closed", () => { windows.delete(window); broker.releaseWindow(contentsId); manager.releaseWindow(contentsId); findManager.releaseWindow(contentsId); });
     const loading = createLocalViewUrl({ viewModel: { kind: "loading", title: "BB Windows", message: "Подключаемся к серверу…" } });
     localViews.add(loading);
     await window.loadURL(config && connection.connected ? connectionUrl(config) : loading);
@@ -165,7 +176,7 @@ async function run() {
   }
   function openSettings() {
     if (settings && !settings.isDestroyed()) { settings.focus(); return; }
-    settings = new BrowserWindow({ width: 540, height: 660, resizable: false, title: "Подключение к BB", parent: main, modal: true,
+    settings = new BrowserWindow({ width: 580, height: 840, resizable: false, title: "Подключение к BB", parent: main, modal: true,
       webPreferences: { preload: join(root, "settings-preload.cjs"), sandbox: true, nodeIntegration: false, contextIsolation: true },
     });
     settings.setMenu(null);
@@ -181,6 +192,7 @@ async function run() {
     try {
       config = await saveConnection(configPath, connectionSchema.parse(payload));
       settings?.close();
+      browserClient.reconnect();
       void connection.configure(config);
       return { ok: true };
     } catch (error) { return { error: error instanceof Error ? error.message : String(error) }; }
@@ -191,7 +203,7 @@ async function run() {
         { label: "Подключение…", click: openSettings },
         { label: "Повторить подключение", click: () => { void connection.ensure(); } },
         { label: "Открыть журнал клиента", click: () => { void shell.openPath(logPath); } },
-        { label: "О BB Windows", click: () => { void dialog.showMessageBox({ title: "BB Windows", message: `BB Windows ${app.getVersion()}`, detail: "Windows-клиент BB. Обновление: установите новую версию поверх текущей. Управление браузером агентами и импорт cookies пока недоступны. Исходный проект: get-bb/bb, MIT.", buttons: ["OK"] }); } },
+        { label: "О BB Windows", click: () => { void dialog.showMessageBox({ title: "BB Windows", message: `BB Windows ${app.getVersion()}`, detail: "Windows-клиент BB. Обновление: установите новую версию поверх текущей. Управление браузером через локальный WSL-демон. Импорт cookies из Windows-браузеров пока недоступен. Исходный проект: get-bb/bb, MIT.", buttons: ["OK"] }); } },
         { type: "separator" }, { role: "quit", label: "Выход" },
       ] },
       { label: "Файл", submenu: [
@@ -216,8 +228,15 @@ async function run() {
   ipcMain.on(desktopIpc.BB_DESKTOP_ZOOM_COMMAND_CHANNEL, (event, command) => { if (trusted(event)) zoom(command); });
   ipcMain.on(desktopIpc.BB_DESKTOP_SET_THEME_CHANNEL, (event, value) => { if (trusted(event) && ["system", "dark", "light"].includes(value)) nativeTheme.themeSource = value; });
   ipcMain.on(STARTUP_ACTION_CHANNEL, (event, value) => { if (!trusted(event)) return; if (value === "retry") void connection.ensure(); if (value === "choose-server") openSettings(); });
-  ipcMain.handle(browserIpc.BB_DESKTOP_BROWSER_TARGET_CHANNEL, () => null);
-  ipcMain.handle(browserIpc.BB_DESKTOP_BROWSER_GET_CONTROL_CHANNEL, () => null);
+  ipcMain.handle(browserIpc.BB_DESKTOP_BROWSER_TARGET_CHANNEL, event => trusted(event) ? broker.getTarget(event.sender.id) : null);
+  ipcMain.handle(browserIpc.BB_DESKTOP_BROWSER_GET_CONTROL_CHANNEL, (event, payload: unknown) => {
+    const parsed = bbDesktopBrowserTabRefSchema.safeParse(payload);
+    return trusted(event) && parsed.success ? broker.getControl(event.sender.id, parsed.data.tabId) : null;
+  });
+  ipcMain.on(browserIpc.BB_DESKTOP_BROWSER_RELEASE_CONTROL_CHANNEL, (event, payload: unknown) => {
+    const parsed = bbDesktopBrowserTabRefSchema.safeParse(payload);
+    if (trusted(event) && parsed.success) broker.takeOver(event.sender.id, parsed.data.tabId);
+  });
   ipcMain.handle(browserIpc.BB_DESKTOP_BROWSER_LIST_IMPORT_SOURCES_CHANNEL, () => ({ sources: [] }));
   ipcMain.handle(browserIpc.BB_DESKTOP_BROWSER_IMPORT_COOKIES_CHANNEL, () => ({ ok: false, reason: "unsupportedPlatform" }));
   ipcMain.on(windowIpc.BB_DESKTOP_OPEN_WINDOW_FIND_CHANNEL, (event, payload: unknown) => {
@@ -243,12 +262,14 @@ async function run() {
     quitting = true;
     generation += 1;
     clearInterval(poll);
+    browserClient.stop();
+    broker.dispose();
     manager.destroyAll();
     findManager.destroyAll();
     void connection.stop().finally(() => { quitReady = true; app.quit(); });
   });
   try { config = await readConnection(configPath); }
   catch (error) { await loadLocal("error", "Проверьте настройки подключения", error instanceof Error ? error.message : String(error)); }
-  if (config) void connection.configure(config);
+  if (config) { browserClient.reconnect(); void connection.configure(config); }
   else openSettings();
 }

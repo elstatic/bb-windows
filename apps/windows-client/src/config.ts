@@ -4,12 +4,17 @@ import { dirname } from "node:path";
 
 const sshProfile = z.string().min(1).max(128).regex(/^[a-zA-Z0-9][a-zA-Z0-9_.@-]*$/);
 const port = z.number().int().min(1024).max(65535);
+const serverOrigin = z.string().url().refine(value => {
+  const url = new URL(value);
+  return ["https:", "http:"].includes(url.protocol) && !url.username && !url.password && !url.search && !url.hash && url.pathname === "/";
+}, "Use an HTTP(S) server origin without credentials or a path");
+const browserHost = z.object({
+  distribution: z.string().min(1).max(128).regex(/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/).optional(),
+  serverUrl: serverOrigin.optional(),
+}).strict().optional();
 export const connectionSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("ssh"), profile: sshProfile, localPort: port, remotePort: z.number().int().min(1).max(65535) }).strict(),
-  z.object({ kind: z.literal("direct"), url: z.string().url().refine(value => {
-    const url = new URL(value);
-    return ["https:", "http:"].includes(url.protocol) && !url.username && !url.password && !url.search && !url.hash && url.pathname === "/";
-  }, "Use an HTTP(S) server origin without credentials or a path") }).strict(),
+  z.object({ kind: z.literal("ssh"), profile: sshProfile, localPort: port, remotePort: z.number().int().min(1).max(65535), browserHost }).strict(),
+  z.object({ kind: z.literal("direct"), url: serverOrigin, browserHost }).strict(),
 ]);
 export type ConnectionConfig = z.infer<typeof connectionSchema>;
 export const DEFAULT_CONNECTION: ConnectionConfig = { kind: "ssh", profile: "nuc-clawd", localPort: 38896, remotePort: 38886 };

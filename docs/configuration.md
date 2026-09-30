@@ -1834,6 +1834,20 @@ The Thread list plugin's `threadLifecycles` preference selects `["active"]`
 `bb thread-list prefs set threadLifecycles '["archived"]'` or the header's
 Filter menu. It syncs to every window and rejects empty or duplicate values.
 
+## Windows client in this fork
+
+The standalone `apps/windows-client` connects directly to a reachable BB origin,
+including a Tailscale Serve HTTPS address, or uses a Windows OpenSSH profile.
+Its `%APPDATA%\BB Windows\connection.json` optionally accepts
+`browserHost.distribution` and `browserHost.serverUrl`. The browser bridge uses
+an already enrolled daemon in that WSL distribution. The canonical server URL
+is needed when the client uses an SSH tunnel or an alternate address.
+These fields are available in connection settings and through the client
+configuration CLI/SDK. Native tabs then use the existing `bb browser` commands
+and `bb.sdk.experimental_desktopBrowsers` surface. Windows Chrome/Edge session
+import is not implemented. See the
+[Windows client README](../apps/windows-client/README.md) for setup and examples.
+
 ## Desktop browser cookie discovery
 
 The desktop app combines known-browser definitions with schema-based discovery

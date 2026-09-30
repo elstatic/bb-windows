@@ -7,7 +7,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const manifest = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"));
 const staging = resolve(root, "dist/app");
 await mkdir(staging, { recursive: true });
-for (const name of ["main.cjs", "preload.cjs", "browser-page-preload.cjs", "find-bar-preload.cjs", "settings-preload.cjs", "settings.html", "icon.png", "LICENSE", "THIRD-PARTY-NOTICES.txt", "client-sdk.cjs", "cli.cjs"]) {
+for (const name of ["wsl-browser-helper.cjs", "main.cjs", "preload.cjs", "browser-page-preload.cjs", "find-bar-preload.cjs", "settings-preload.cjs", "settings.html", "icon.png", "LICENSE", "THIRD-PARTY-NOTICES.txt", "client-sdk.cjs", "cli.cjs"]) {
   await copyFile(resolve(root, "dist", name), resolve(staging, name));
 }
 await writeFile(resolve(staging, "package.json"), JSON.stringify({

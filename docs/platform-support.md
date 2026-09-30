@@ -11,8 +11,9 @@ instructions. It does not bundle a local server or host daemon. Agent execution
 on a Windows machine continues to use the existing WSL2 host environment.
 
 The Windows client initially uses manual updates and does not support BB Connect
-account pairing, importing browser cookies or agent control of its embedded
-browser. The host-environment requirements below still apply to server, daemon
+account pairing or importing cookies from Windows browsers. Agent control of
+its embedded browser uses the enrolled WSL daemon and a local pipe bridge.
+The host-environment requirements below still apply to server, daemon
 and provider execution.
 
 ## Supported host environments
