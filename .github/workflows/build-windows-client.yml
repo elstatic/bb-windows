@@ -1,0 +1,33 @@
+name: Windows desktop client
+on:
+  workflow_dispatch:
+  push:
+    branches: [windows-desktop-client]
+    paths: ["apps/windows-client/**", "apps/desktop/src/**", "packages/desktop-contract/**", ".github/workflows/build-windows-client.yml"]
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/windows-client/package-lock.json
+      - run: npm ci --prefix apps/windows-client --ignore-scripts
+      - name: Verify client
+        shell: pwsh
+        run: |
+          $env:PATH = "$pwd/apps/windows-client/node_modules/.bin;$env:PATH"
+          & "$pwd/apps/windows-client/node_modules/.bin/turbo.cmd" run build typecheck test --filter=@bb/windows-client
+      - name: Package Windows installer
+        shell: pwsh
+        run: |
+          $env:PATH = "$pwd/apps/windows-client/node_modules/.bin;$env:PATH"
+          & "$pwd/apps/windows-client/node_modules/.bin/turbo.cmd" run package:win --filter=@bb/windows-client
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bb-windows-x64
+          path: apps/windows-client/release/*Setup.exe

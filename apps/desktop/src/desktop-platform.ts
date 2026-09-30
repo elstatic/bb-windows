@@ -10,5 +10,8 @@ export function getDesktopVersion(version: string | undefined): string {
 export function resolveBbDesktopPlatform(
   platform: NodeJS.Platform,
 ): BbDesktopInfo["platform"] {
-  return platform === "darwin" ? "macos" : "linux";
+  if (platform === "darwin") return "macos";
+  if (platform === "linux") return "linux";
+  if (platform === "win32") return "windows";
+  throw new Error(`Unsupported desktop platform: ${platform}`);
 }

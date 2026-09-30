@@ -2,6 +2,19 @@
 
 # Platform Support
 
+## Windows desktop client in this fork
+
+`apps/windows-client` builds a Windows x64 Electron client for an existing BB
+server. It has a per-user NSIS installer and connects through Windows OpenSSH or
+a direct HTTP(S) origin. See its README for build, CLI, SDK and verification
+instructions. It does not bundle a local server or host daemon. Agent execution
+on a Windows machine continues to use the existing WSL2 host environment.
+
+The Windows client initially uses manual updates and does not support BB Connect
+account pairing, importing browser cookies or agent control of its embedded
+browser. The host-environment requirements below still apply to server, daemon
+and provider execution.
+
 ## Supported host environments
 
 - macOS persistent host

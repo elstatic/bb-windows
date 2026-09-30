@@ -3,6 +3,18 @@
   "globalEnv": ["BB_BUILD_TOOLCHAIN"],
   "globalPassThroughEnv": ["npm_config_store_dir", "pnpm_config_store_dir"],
   "tasks": {
+    "@bb/windows-client#build": {
+      "dependsOn": [],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/apps/desktop/src/**", "$TURBO_ROOT$/apps/desktop/assets/icon.png", "$TURBO_ROOT$/packages/**/src/**", "$TURBO_ROOT$/packages/**/package.json"],
+      "outputs": ["dist/**"]
+    },
+    "@bb/windows-client#test": { "dependsOn": [], "outputs": [] },
+    "@bb/windows-client#typecheck": {
+      "dependsOn": [],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/apps/desktop/src/**", "$TURBO_ROOT$/packages/**/src/**"],
+      "outputs": []
+    },
+    "@bb/windows-client#package:win": { "dependsOn": ["build"], "cache": false, "outputs": ["release/**"] },
     "@bb/db#db:generate": { "cache": false },
     "@bb/desktop#smoke:browser-broker": {
       "cache": false,
