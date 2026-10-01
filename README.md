@@ -14,6 +14,9 @@ See [client setup, build instructions and limitations](apps/windows-client/READM
 The installer is unsigned and updates are manual. Windows Chrome/Edge session
 import and BB Connect account pairing are not implemented.
 
+Only the Windows client workflow runs in this repository. Upstream workflows
+are retained in `.github/upstream-workflows` for reference.
+
 The upstream project documentation follows.
 
 ---
