@@ -1,3 +1,23 @@
+# BB Windows
+
+Windows x64 desktop client for an existing [BB](https://github.com/get-bb/bb) server.
+This standalone repository retains the upstream source and MIT license.
+
+**[Download BB Windows 0.2.0](https://github.com/elstatic/bb-windows/releases/tag/v0.2.0)**
+
+- Connect directly over HTTPS/Tailscale or through Windows OpenSSH.
+- Browse in native Electron tabs and let agents control them through an enrolled WSL daemon.
+- Revoke agent control with **Take over**; new automation tabs use separate profiles.
+- Keep server and agent execution on the existing BB server and enrolled hosts.
+
+See [client setup, build instructions and limitations](apps/windows-client/README.md).
+The installer is unsigned and updates are manual. Windows Chrome/Edge session
+import and BB Connect account pairing are not implemented.
+
+The upstream project documentation follows.
+
+---
+
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/e40bda56-54a4-47f8-a417-6bbadf2e5b40">
