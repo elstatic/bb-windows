@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1 — 2026-10-01
+
+- Add native file-link menus with reveal in Windows Explorer and Windows-path copying.
+- Translate WSL paths using the selected distribution and retain original-path copy, filename copy and preview.
+- Validate local file availability and add renderer, CLI and SDK file actions.
+
 ## 0.3.0 — 2026-10-01
 
 - Add official BB Connect sign-in, device pairing, owned-server selection and renewable desktop sessions.

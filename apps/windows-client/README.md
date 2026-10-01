@@ -8,7 +8,7 @@ host daemon, provider CLI, SQLite add-on or node-pty.
 
 ## Install
 
-Run `BB-Windows-0.2.0-x64-Setup.exe`. Installation is per user. Start **BB Windows**
+Run `BB-Windows-0.3.1-x64-Setup.exe`. Installation is per user. Start **BB Windows**
 from the Start menu or desktop. Node.js and WSL are not needed to run this client;
 WSL remains necessary for local agent execution through an enrolled WSL host.
 
@@ -199,3 +199,26 @@ protect transport and integrity, not publisher identity.
 
 The fork is based on upstream commit
 `36aacc040ec0a2b092785d65dee7869d02cec08e` and retains the upstream MIT license.
+
+## Windows file actions
+
+Right-click an absolute file link in a message to use **Показать в проводнике**
+and **Копировать путь для Windows**. The Windows client supplies this native
+menu while retaining preview, original-path copy and filename copy.
+`/mnt/c/...` resolves to `C:\...`; Linux files resolve through the selected WSL
+distribution to `\\wsl.localhost\<distribution>\...`. Paths are passed directly
+to `wslpath` without shell interpolation. Spaces, Unicode and file-link line
+locations are supported. Both actions check local availability first; a file
+that exists only on a remote machine must be downloaded or mounted locally.
+The original source path remains available separately.
+
+```powershell
+node apps/windows-client/dist/cli.cjs file resolve --data-dir "$env:APPDATA\BB Windows" --path "/home/me/report.md"
+node apps/windows-client/dist/cli.cjs file copy --data-dir "$env:APPDATA\BB Windows" --path "/mnt/c/work/report.md"
+node apps/windows-client/dist/cli.cjs file reveal --data-dir "$env:APPDATA\BB Windows" --path "C:\work\report.md"
+```
+
+SDK: `requestClientControl(dataDir, { action: "file-reveal", path })`,
+`file-copy` and `file-resolve`; all return `{ sourcePath, windowsPath }`.
+Trusted BB renderers can also use `window.bbWindowsFiles.resolve(path)`,
+`copy(path)` and `reveal(path)`. Browser tabs do not receive this bridge.

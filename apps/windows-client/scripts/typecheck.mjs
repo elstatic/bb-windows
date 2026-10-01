@@ -21,7 +21,7 @@ paths["hono/*"] = [resolve(root, "node_modules/hono/dist/types/*")];
 paths["ws"] = [resolve(root, "node_modules/@types/ws/index.d.ts")];
 const config = resolve(root, ".typecheck.json");
 await writeFile(config, JSON.stringify({
-  compilerOptions: { strict: true, target: "ES2022", module: "ESNext", moduleResolution: "Bundler", noEmit: true, skipLibCheck: true, esModuleInterop: true, types: ["node"], typeRoots: [resolve(root, "node_modules/@types")], paths },
+  compilerOptions: { strict: true, target: "ES2022", lib: ["ES2022", "DOM", "DOM.Iterable"], module: "ESNext", moduleResolution: "Bundler", noEmit: true, skipLibCheck: true, esModuleInterop: true, types: ["node"], typeRoots: [resolve(root, "node_modules/@types")], paths },
   include: ["src/**/*.ts", "test/**/*.ts", "../desktop/src/preload.ts", "../desktop/src/browser-page-preload.ts"],
 }));
 try {

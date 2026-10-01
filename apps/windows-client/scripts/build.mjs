@@ -44,7 +44,7 @@ for (const [input, output] of [
   [resolve(root, "src/main.ts"), "main.cjs"],
   [resolve(root, "src/connect-service.ts"), "connect-service.cjs"],
   [resolve(root, "src/wsl-browser-helper.ts"), "wsl-browser-helper.cjs"],
-  [resolve(desktop, "src/preload.ts"), "preload.cjs"],
+  [resolve(root, "src/preload.ts"), "preload.cjs"],
   [resolve(desktop, "src/browser-page-preload.ts"), "browser-page-preload.cjs"],
   [resolve(desktop, "src/find-bar-preload.ts"), "find-bar-preload.cjs"],
   [resolve(root, "src/settings-preload.ts"), "settings-preload.cjs"],
