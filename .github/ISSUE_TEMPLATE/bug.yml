@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Please read [docs/filing-issues.md](https://github.com/get-bb/bb/blob/main/docs/filing-issues.md) first. Short and precise beats long and vague.
+        Please read [docs/filing-issues.md](https://github.com/elstatic/bb-windows/blob/main/docs/filing-issues.md) first. Short and precise beats long and vague.
   - type: textarea
     id: summary
     attributes:
@@ -17,11 +17,11 @@ body:
     id: environment
     attributes:
       label: Versions and environment
-      description: bb version and install method (desktop app, npx, install.sh, source commit); OS; Node if from source; provider + provider CLI version if an agent is involved; anything unusual (remote machine, Connect, worktree env, custom ports/data dir).
+      description: BB Windows version; BB server version; Windows version; direct/Tailscale or SSH; WSL distribution and Node version for browser control.
       placeholder: |
-        - bb 0.38.0 (desktop app), macOS 26
-        - claude-code, claude 2.1.x
-        - worktree environment, bb Connect paired
+        - BB Windows 0.2.0, Windows x64
+        - Connection: HTTPS over Tailscale
+        - Browser host: Ubuntu on WSL2, Node.js 24
     validations:
       required: true
   - type: textarea
@@ -30,9 +30,9 @@ body:
       label: Steps to reproduce
       description: Numbered, copy-pasteable, minimal. Exact commands, clicks, or prompt text. Note anything you tried that did NOT reproduce it.
       placeholder: |
-        1. bb thread spawn --project … --provider codex --prompt "Reply only with ok."
-        2. …
-        Did not reproduce with: claude-code; a fresh data dir.
+        1. Launch BB Windows and connect to a server.
+        2. Open a browser tab in a thread.
+        3. Describe the action and unexpected behavior.
     validations:
       required: true
   - type: textarea
@@ -47,7 +47,7 @@ body:
     id: evidence
     attributes:
       label: Evidence
-      description: Trimmed logs from ~/.bb/logs; thread/project/environment ids (thr_…, proj_…, env_…); code permalinks with a commit sha (`blob/<sha>/path#L…`); how you measured any numbers.
+      description: Relevant client.log excerpts from %APPDATA%\BB Windows, screenshots, or a code permalink. Redact secrets and personal data; never attach private browser connection files.
   - type: textarea
     id: ruled-out
     attributes:

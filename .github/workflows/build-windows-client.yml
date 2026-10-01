@@ -2,7 +2,7 @@ name: Windows desktop client
 on:
   workflow_dispatch:
   push:
-    branches: [windows-desktop-client]
+    branches: [main, windows-desktop-client]
     paths: ["apps/windows-client/**", "apps/desktop/src/**", "packages/desktop-contract/**", ".github/workflows/build-windows-client.yml"]
 permissions:
   contents: read

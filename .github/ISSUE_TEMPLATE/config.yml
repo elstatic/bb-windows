@@ -1,5 +1,5 @@
-blank_issues_enabled: false
+blank_issues_enabled: true
 contact_links:
-  - name: Questions and support
-    url: https://discord.gg/kvBU6tJhcJ
-    about: Ask on Discord. Issues are for reproducible bugs, feature requests, and tasks.
+  - name: Setup and troubleshooting
+    url: https://github.com/elstatic/bb-windows/blob/main/apps/windows-client/README.md
+    about: Connection modes, WSL browser setup, build instructions and current limits.

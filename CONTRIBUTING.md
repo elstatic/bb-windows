@@ -1,25 +1,48 @@
-# Contributing
+# Contributing to BB Windows
 
-Thanks for helping improve bb.
+Issues and pull requests are welcome. No contributor approval or Discord
+membership is required for this repository.
 
-## Contributor Approval
+## Report a problem
 
-bb needs approval before you open a pull request. Anyone can open an issue. You need no approval for an issue. The gate closes a pull request from an author without trust.
+Use the [bug report form](https://github.com/elstatic/bb-windows/issues/new?template=bug.yml).
+Include the BB Windows and server versions, Windows version, connection mode,
+WSL distribution when relevant, reproduction steps, and expected/actual behavior.
+Useful client logs are in `%APPDATA%\BB Windows\client.log`.
+Remove credentials and personal information from logs and screenshots. Never
+attach SSH keys, browser cookies or private CDP connection files.
 
-Join the #contributors channel in Discord ([invite link](https://discord.gg/kvBU6tJhcJ)) and explain what you want to open a pull request for and why.
+For feature requests, describe the workflow and the behavior you need. Discuss
+large changes in an issue before spending time on implementation.
 
-A maintainer then adds your name to `.github/APPROVED_CONTRIBUTORS`. Open the pull request after approval. Authors with a merged change in main already have approval.
+## Development
 
-A maintainer can also approve you with `/approve @your-name` on the pull request.
+The standalone client lives in `apps/windows-client`. It reuses browser,
+preload and desktop components from `apps/desktop` and shared contracts from
+`packages`. The server and host daemon stay separate.
 
-## Bugs
+Use Node.js 24. See the [client README](apps/windows-client/README.md#build) for
+Windows build/package commands. On Linux/WSL, from the repository root:
 
-If you run into a bug, please open an issue with the bug report form. Follow [docs/filing-issues.md](docs/filing-issues.md): versions, minimal copy-pasteable steps, expected vs actual output, evidence, and what you ruled out. A stranger should be able to reproduce it from the issue alone.
+```sh
+npm ci --prefix apps/windows-client --ignore-scripts
+PATH="$PWD/apps/windows-client/node_modules/.bin:$PATH" apps/windows-client/node_modules/.bin/turbo run build typecheck test --filter=@bb/windows-client
+```
 
-If you fix the bug, feel free to open a pull request for it after approval.
+Read [AGENTS.md](AGENTS.md) for the repository's coding guidelines. Keep changes
+focused; document user-facing behavior and verify meaningful failure paths.
+Changes to browser transport need real Windows/WSL verification as well as unit
+checks. Installer packaging runs on Windows.
 
-## Feature Requests And UI Changes
+Upstream CI and publication workflows are archived in
+`.github/upstream-workflows`; only the Windows client workflow is active here.
 
-For feature requests and UI changes, please open an issue before opening a pull request.
+## Pull requests
 
-Feel free to link changes from your fork as prototypes, but do not open a pull request against this repo until you get sign-off and we are aligned on the feature.
+Explain the problem, resulting behavior and how you verified it. Use the PR
+template and link a related issue when one exists. Do not include build output,
+installers, local settings or credentials in commits. Agent-created issues and
+PR bodies must end with `> AGENT GENERATED`.
+
+Contributions are distributed under the repository's [MIT license](LICENSE).
+Preserve upstream copyright notices when reusing code.

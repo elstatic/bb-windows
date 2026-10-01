@@ -1,11 +1,11 @@
 name: Feature request
-description: A workflow you could not complete, or behavior bb should have. Open the issue before a PR for features and UI changes.
+description: A workflow you could not complete, or behavior bb should have. Describe a Windows client workflow or capability you would like.
 labels: []
 body:
   - type: markdown
     attributes:
       value: |
-        See [docs/filing-issues.md](https://github.com/get-bb/bb/blob/main/docs/filing-issues.md) and [CONTRIBUTING.md](https://github.com/get-bb/bb/blob/main/CONTRIBUTING.md). Prototype links from a fork are welcome; please get sign-off here before opening a PR.
+        See [docs/filing-issues.md](https://github.com/elstatic/bb-windows/blob/main/docs/filing-issues.md) and [CONTRIBUTING.md](https://github.com/elstatic/bb-windows/blob/main/CONTRIBUTING.md). Describe your workflow and proposed behavior. Discuss large changes before implementation.
   - type: textarea
     id: workflow
     attributes:
