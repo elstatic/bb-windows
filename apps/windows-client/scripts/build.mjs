@@ -42,12 +42,13 @@ const options = {
 };
 for (const [input, output] of [
   [resolve(root, "src/main.ts"), "main.cjs"],
+  [resolve(root, "src/connect-service.ts"), "connect-service.cjs"],
   [resolve(root, "src/wsl-browser-helper.ts"), "wsl-browser-helper.cjs"],
   [resolve(desktop, "src/preload.ts"), "preload.cjs"],
   [resolve(desktop, "src/browser-page-preload.ts"), "browser-page-preload.cjs"],
   [resolve(desktop, "src/find-bar-preload.ts"), "find-bar-preload.cjs"],
   [resolve(root, "src/settings-preload.ts"), "settings-preload.cjs"],
-  [resolve(root, "src/config.ts"), "client-sdk.cjs"],
+  [resolve(root, "src/client-sdk.ts"), "client-sdk.cjs"],
   [resolve(root, "src/cli.ts"), "cli.cjs"],
 ]) {
   const result = await build({ ...options, entryPoints: [input], outfile: resolve(root, "dist", output) });
@@ -62,7 +63,7 @@ await writeFile(resolve(root, "dist/settings.html"), settingsHtml.replace("PLACE
 await copyFile(resolve(desktop, "assets/icon.png"), resolve(root, "dist/icon.png"));
 await copyFile(resolve(repo, "LICENSE"), resolve(root, "dist/LICENSE"));
 const notices = [];
-for (const name of ["zod", "hono", "ws"]) {
+for (const name of ["zod", "hono", "ws", "electron-updater"]) {
   notices.push(name + "\n" + await readFile(resolve(root, "node_modules", name, "LICENSE"), "utf8"));
 }
 await writeFile(resolve(root, "dist/THIRD-PARTY-NOTICES.txt"), notices.join("\n\n"));

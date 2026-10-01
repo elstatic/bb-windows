@@ -16,12 +16,13 @@ await writeFile(resolve(staging, "package.json"), JSON.stringify({
 }, null, 2));
 await build({
   projectDir: root,
+  publish: "never",
   targets: Platform.WINDOWS.createTarget(["nsis"], Arch.x64),
   config: {
     appId: "dev.bb.windows-client", productName: "BB Windows",
     directories: { app: staging, output: resolve(root, "release") },
     files: ["**/*"], asar: true, npmRebuild: false,
-    electronVersion: "44.3.0", publish: null,
+    electronVersion: "44.3.0", publish: { provider: "github", owner: "elstatic", repo: "bb-windows" },
     artifactName: "BB-Windows-${version}-${arch}-Setup.${ext}",
     win: { target: [{ target: "nsis", arch: ["x64"] }], icon: resolve(root, "dist/icon.png"), signExecutable: false },
     nsis: { oneClick: false, perMachine: false, allowElevation: false, allowToChangeInstallationDirectory: true, createDesktopShortcut: true, createStartMenuShortcut: true, shortcutName: "BB Windows", deleteAppDataOnUninstall: false },

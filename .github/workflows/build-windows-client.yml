@@ -1,6 +1,11 @@
 name: Windows desktop client
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing vX.Y.Z tag to publish (leave empty for an artifact build)"
+        required: false
+        type: string
   push:
     branches: [main, windows-desktop-client]
     paths: ["apps/windows-client/**", "apps/desktop/src/**", "packages/desktop-contract/**", ".github/workflows/build-windows-client.yml"]
@@ -8,9 +13,13 @@ permissions:
   contents: read
 jobs:
   windows:
+    permissions:
+      contents: write
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -27,7 +36,31 @@ jobs:
         run: |
           $env:PATH = "$pwd/apps/windows-client/node_modules/.bin;$env:PATH"
           & "$pwd/apps/windows-client/node_modules/.bin/turbo.cmd" run package:win --filter=@bb/windows-client
+      - name: Prepare checksums
+        shell: pwsh
+        run: |
+          $version = (Get-Content apps/windows-client/package.json | ConvertFrom-Json).version
+          Get-ChildItem apps/windows-client/release/*Setup.exe | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" } | Set-Content -Encoding ascii "apps/windows-client/release/SHA256SUMS-$version.txt"
       - uses: actions/upload-artifact@v4
         with:
           name: bb-windows-x64
-          path: apps/windows-client/release/*Setup.exe
+          path: |
+            apps/windows-client/release/*Setup.exe
+            apps/windows-client/release/*.blockmap
+            apps/windows-client/release/latest.yml
+            apps/windows-client/release/SHA256SUMS*.txt
+      - name: Publish stable update release
+        if: inputs.release_tag != ''
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          $version = (Get-Content apps/windows-client/package.json | ConvertFrom-Json).version
+          if ($env:RELEASE_TAG -ne "v$version") { throw "Release tag must match the client version" }
+          gh release create $env:RELEASE_TAG --verify-tag --draft --title "BB Windows $version" --notes "Windows x64 client. Install once; subsequent updates arrive through GitHub Releases. Settings are preserved."
+          if ($LASTEXITCODE -ne 0) { throw "Could not create release" }
+          gh release upload $env:RELEASE_TAG apps/windows-client/release/*Setup.exe apps/windows-client/release/*.blockmap apps/windows-client/release/latest.yml apps/windows-client/release/SHA256SUMS*.txt
+          if ($LASTEXITCODE -ne 0) { throw "Could not upload release assets" }
+          gh release edit $env:RELEASE_TAG --draft=false --prerelease=false --latest
+          if ($LASTEXITCODE -ne 0) { throw "Could not publish release" }

@@ -100,7 +100,7 @@ test("times out an unreachable server and stops the owned SSH process", async ()
   assert.equal(await h.connection.configure(DEFAULT_CONNECTION), false);
   assert.equal(h.launches, 1);
   assert.equal(h.kills, 1);
-  assert.match(h.states.at(-1)?.message ?? "", /NUC не отвечает/);
+  assert.match(h.states.at(-1)?.message ?? "", /Сервер BB не отвечает/);
   await h.connection.stop();
   assert.equal(h.kills, 1);
 });

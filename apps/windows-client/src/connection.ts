@@ -7,6 +7,7 @@ export type ProbeResult = { kind: "compatible" } | { kind: "unavailable" | "inco
 export interface ConnectionState { kind: "connecting" | "connected" | "disconnected"; url: string; message: string; borrowed: boolean }
 interface ConnectionDependencies {
   probe(url: string): Promise<ProbeResult>;
+  authorize(config: ConnectionConfig, isCurrent: () => boolean): Promise<void>;
   portAvailable(port: number): Promise<boolean>;
   launch(executable: string, args: string[]): ChildProcess;
   sshExecutable: string;
@@ -30,7 +31,7 @@ export function createConnection(
   overrides: Partial<ConnectionDependencies> = {},
 ) {
   const deps: ConnectionDependencies = {
-    probe, portAvailable: isPortAvailable,
+    probe, authorize: async () => {}, portAvailable: isPortAvailable,
     launch: (executable, args) => spawn(executable, args, { windowsHide: true, stdio: ["ignore", "ignore", "pipe"] }),
     sshExecutable: process.platform === "win32" ? join(process.env.SystemRoot ?? "C:\\Windows", "System32", "OpenSSH", "ssh.exe") : "ssh",
     delay: ms => new Promise(resolve => setTimeout(resolve, ms)), now: Date.now, startupTimeoutMs: 16000, ...overrides,
@@ -60,6 +61,8 @@ export function createConnection(
     connected = false;
     emit("connecting", "Подключаемся к BB…");
     try {
+      await deps.authorize(current, isCurrent);
+      if (!isCurrent()) return false;
       let result = await deps.probe(connectionUrl(current));
       if (!isCurrent()) return false;
       if (result.kind === "compatible") {
@@ -67,7 +70,7 @@ export function createConnection(
         emit("connected", "Подключено", current.kind === "ssh" && child === null);
         return true;
       }
-      if (current.kind === "direct" || result.kind === "incompatible") throw new Error(result.reason);
+      if (current.kind !== "ssh" || result.kind === "incompatible") throw new Error(result.reason);
       if (child === null) {
         if (!await deps.portAvailable(current.localPort)) throw new Error(`Порт ${current.localPort} занят, но BB на нём не отвечает. Выберите другой порт в настройках.`);
         if (!isCurrent()) return false;
@@ -97,7 +100,7 @@ export function createConnection(
         if (result.kind === "incompatible") throw new Error(result.reason);
         if (lastError && child === null) throw new Error(lastError.trim());
       }
-      if (isCurrent()) throw new Error(lastError.trim() || "NUC не отвечает. Проверьте сеть, SSH-профиль и доступность сервера.");
+      if (isCurrent()) throw new Error(lastError.trim() || "Сервер BB не отвечает. Проверьте сеть, SSH-профиль и доступность сервера.");
     } catch (error) {
       if (isCurrent()) {
         await stopChild();

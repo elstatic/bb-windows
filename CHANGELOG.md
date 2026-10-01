@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 — 2026-10-01
+
+- Add official BB Connect sign-in, device pairing, owned-server selection and renewable desktop sessions.
+- Encrypt cached machine credentials with Windows DPAPI and preserve the WSL browser origin.
+- Add automatic stable GitHub Release updates, background downloads and installation on exit or explicit restart.
+- Add native update controls and authenticated Connect/update CLI and SDK commands.
+- Generate the update feed and blockmaps and support stable release publication through Windows CI.
+
 ## 0.2.0 — 2026-09-30
 
 - Register Windows desktop browser instances through an enrolled WSL host.

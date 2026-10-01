@@ -93,7 +93,7 @@ installing the BB server's native dependencies. A build-time dependency check
 rejects bundles that accidentally include the server or its native runtime.
 
 `.github/workflows/build-windows-client.yml` builds and checks the installer on
-a Windows runner and uploads an artifact. It does not publish a release.
+a Windows runner and uploads an artifact. An optional `release_tag` workflow input publishes a stable release with its update feed.
 
 ## CLI and SDK
 
@@ -137,12 +137,65 @@ machine with a saved connection. It installs, uninstalls and reinstalls this
 client, temporarily uses port `38906`, and writes a verification report into a
 new temporary directory. It restores the original connection settings.
 
-The initial release uses manual installer updates, preserving settings. It
-does not subscribe to upstream macOS/Linux update feeds. The installer is
-unsigned. Browser cookie import from Windows Chrome/Edge and BB Connect account
-pairing are not implemented. Connect using an SSH tunnel or a direct reachable
-BB origin. Agent control of native tabs uses the existing BB browser API and
-requires a locally enrolled WSL host for the selected server.
+Version 0.3.0 adds BB Connect account sign-in, device-code pairing, server selection
+and renewable desktop sessions. Machine credentials use Windows DPAPI encryption.
+Direct HTTPS/Tailscale and SSH remain available. Native Windows browser session
+import is not implemented; agent control requires an enrolled WSL host.
+
+## BB Connect
+
+Choose **BB Connect** in **BB → Подключение…**, sign in through the official
+Connect dashboard and select an owned server. You can also paste a one-time
+device code. For an existing direct/SSH connection, **Подключить текущий сервер**
+requests a device code from that authenticated server and switches this client
+to Connect. The canonical WSL server origin is retained for browser control.
+Closing the sign-in window without signing in preserves an existing pairing.
+
+The running client exposes authenticated local SDK/CLI commands:
+
+```powershell
+node apps/windows-client/dist/cli.cjs connect status --data-dir "$env:APPDATA\BB Windows"
+node apps/windows-client/dist/cli.cjs connect list --data-dir "$env:APPDATA\BB Windows"
+node apps/windows-client/dist/cli.cjs connect sign-in --data-dir "$env:APPDATA\BB Windows"
+node apps/windows-client/dist/cli.cjs connect bootstrap --data-dir "$env:APPDATA\BB Windows"
+node apps/windows-client/dist/cli.cjs connect pair --data-dir "$env:APPDATA\BB Windows" --input private-code.txt
+node apps/windows-client/dist/cli.cjs connect logout --data-dir "$env:APPDATA\BB Windows"
+```
+
+`--base-url` selects a compatible Connect service for list/sign-in/pair/logout;
+it defaults to `https://getbb.app/`. `bootstrap` uses the current authenticated
+server. Pairing codes belong in a private file, never a shell command argument.
+The SDK exports `requestClientControl`, `connectActionSchema` and `clientActionSchema`.
+Responses contain server metadata and session status, never credentials.
+
+## Automatic updates
+
+Installed Windows clients check this fork's stable GitHub Releases shortly after
+launch, every six hours and after resume. Updates download in the background;
+SHA512 verification must succeed before installation is available. The native
+**BB** menu and BB desktop API expose check/status/install actions. A downloaded
+update installs on normal exit, or **Перезапустить и обновить** installs and
+relaunches immediately. Settings, pairing and browser sessions are preserved.
+Development builds do not download or install updates. Prereleases and downgrades
+are excluded. Version 0.1/0.2 users must install 0.3 once manually.
+
+```powershell
+node apps/windows-client/dist/cli.cjs update status --data-dir "$env:APPDATA\BB Windows"
+node apps/windows-client/dist/cli.cjs update check --data-dir "$env:APPDATA\BB Windows"
+node apps/windows-client/dist/cli.cjs update install --data-dir "$env:APPDATA\BB Windows"
+```
+
+SDK: `requestClientControl(dataDir, { action: "update-check" })`, `update-status`
+and `update-install`. The remote BB API also supports `bbDesktop.checkForUpdates()`,
+`getInfo()`, `installUpdate()` and `onChange()`.
+
+To publish an update, bump `apps/windows-client/package.json` and its npm lockfile,
+push the commit and a matching `vX.Y.Z` tag, then run the Windows workflow with
+`release_tag=vX.Y.Z`. It validates, builds and uploads the installer, blockmap,
+`latest.yml` and checksums into a draft, then publishes it as a stable release.
+A build without `release_tag` produces artifacts only. Existing release tags
+are not overwritten. The installer is unsigned; HTTPS and hash verification
+protect transport and integrity, not publisher identity.
 
 The fork is based on upstream commit
 `36aacc040ec0a2b092785d65dee7869d02cec08e` and retains the upstream MIT license.

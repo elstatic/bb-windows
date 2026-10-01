@@ -4,10 +4,10 @@ Windows-клиент для [BB](https://github.com/get-bb/bb): подключе
 серверу, работа с агентами и встроенный браузер, которым агент может управлять
 через локальный WSL-демон.
 
-[Скачать 0.2.0](https://github.com/elstatic/bb-windows/releases/tag/v0.2.0) ·
+[Скачать 0.3.0](https://github.com/elstatic/bb-windows/releases/tag/v0.3.0) ·
 [English](README.md) · [Подробная документация](apps/windows-client/README.md)
 
-Версия для тестирования. Установщик пока без цифровой подписи, обновления — вручную.
+Версия для тестирования. Установщик пока без цифровой подписи, обновления из GitHub скачиваются автоматически.
 
 ## Возможности
 
@@ -25,9 +25,9 @@ Windows-клиент для [BB](https://github.com/get-bb/bb): подключе
 
 ## Установка
 
-1. Скачай [BB-Windows-0.2.0-x64-Setup.exe](https://github.com/elstatic/bb-windows/releases/download/v0.2.0/BB-Windows-0.2.0-x64-Setup.exe).
+1. Скачай [BB-Windows-0.3.0-x64-Setup.exe](https://github.com/elstatic/bb-windows/releases/download/v0.3.0/BB-Windows-0.3.0-x64-Setup.exe).
 2. Установи и запусти **BB Windows**. Windows может показать предупреждение из-за отсутствия подписи.
-3. Выбери «Адрес сервера» и введи адрес своего BB. Если Windows видит сервер через Tailscale Serve, достаточно его HTTPS-адреса.
+3. Выбери «BB Connect», войди и выбери сервер, либо выбери «Адрес сервера» и введи адрес своего BB. Если Windows видит сервер через Tailscale Serve, достаточно его HTTPS-адреса.
 4. Для сервера, доступного только через SSH, выбери «SSH-туннель» и укажи свой настроенный профиль Windows OpenSSH.
 
 Настройки подключения доступны через **BB → Подключение…**.
@@ -48,8 +48,7 @@ Windows-клиент для [BB](https://github.com/get-bb/bb): подключе
 ## Ограничения
 
 - Импорт авторизации из Windows Chrome/Edge пока отсутствует: входить на сайты нужно внутри приложения.
-- Подключение через аккаунт BB Connect пока отсутствует: доступны адрес сервера и SSH.
-- Нет автообновлений и цифровой подписи установщика.
+- Установщик без цифровой подписи. Для перехода с 0.1/0.2 установи 0.3 один раз вручную.
 - Локальные агенты и провайдеры работают через WSL.
 
 Сборка, тестирование, CLI и SDK описаны в [документации клиента](apps/windows-client/README.md).
@@ -58,3 +57,7 @@ Windows-клиент для [BB](https://github.com/get-bb/bb): подключе
 сохранены. Лицензия — [MIT](LICENSE).
 
 [История версий](CHANGELOG.md) · [Сообщить об ошибке](https://github.com/elstatic/bb-windows/issues/new?template=bug.yml)
+
+## BB Connect и обновления
+
+В 0.3 добавлены вход через BB Connect, выбор сервера и автообновления из GitHub Releases. Обновление скачивается в фоне и устанавливается при выходе; настройки сохраняются. Проверка и перезапуск доступны в меню **BB**. [CLI, SDK и публикация обновлений](apps/windows-client/README.md#automatic-updates).

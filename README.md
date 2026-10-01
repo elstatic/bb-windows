@@ -1,6 +1,6 @@
 # BB Windows
 
-[![Windows x64](https://img.shields.io/badge/platform-Windows%20x64-0078D4)](https://github.com/elstatic/bb-windows/releases/tag/v0.2.0)
+[![Windows x64](https://img.shields.io/badge/platform-Windows%20x64-0078D4)](https://github.com/elstatic/bb-windows/releases/tag/v0.3.0)
 [![MIT license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Windows build](https://github.com/elstatic/bb-windows/actions/workflows/build-windows-client.yml/badge.svg)](https://github.com/elstatic/bb-windows/actions/workflows/build-windows-client.yml)
 
@@ -8,17 +8,19 @@ A Windows desktop client for [BB](https://github.com/get-bb/bb), the agentic IDE
 Connect to your existing server, work with agents, and let them control browser
 tabs on your Windows machine through an enrolled WSL host.
 
-[Download 0.2.0](https://github.com/elstatic/bb-windows/releases/tag/v0.2.0) ·
+[Download 0.3.0](https://github.com/elstatic/bb-windows/releases/tag/v0.3.0) ·
 [Setup & technical details](apps/windows-client/README.md) ·
 [Русский](README.ru.md) · [Contributing](CONTRIBUTING.md)
 
-> Early release. The installer is unsigned; updates are manual.
+> Early release. The installer is unsigned; stable releases update automatically.
 
 ## What you get
 
 | Feature | Behavior |
 | --- | --- |
 | Windows installer | Per-user installation, Start menu and desktop shortcuts |
+| BB Connect | Account sign-in, device pairing and owned-server selection |
+| Automatic updates | Stable GitHub Releases, background downloads, install on exit |
 | Direct connection | HTTP(S) connection to a BB server, including a Tailscale Serve address |
 | SSH connection | Uses your Windows OpenSSH profile; reconnects after interruptions |
 | Embedded browser | Electron browser tabs with persistent sessions |
@@ -32,12 +34,12 @@ installer does not bundle a BB server or host daemon.
 
 ## Install and connect
 
-1. Download [BB-Windows-0.2.0-x64-Setup.exe](https://github.com/elstatic/bb-windows/releases/download/v0.2.0/BB-Windows-0.2.0-x64-Setup.exe).
+1. Download [BB-Windows-0.3.0-x64-Setup.exe](https://github.com/elstatic/bb-windows/releases/download/v0.3.0/BB-Windows-0.3.0-x64-Setup.exe).
 2. Run the installer and launch **BB Windows**. Windows may show a warning because the installer is unsigned.
-3. Choose **Адрес сервера** and enter the BB origin, such as `https://bb.example.com/`. A reachable Tailscale Serve HTTPS address works directly.
+3. Choose **BB Connect**, sign in and select your server, or choose **Адрес сервера** and enter the BB origin, such as `https://bb.example.com/`. A reachable Tailscale Serve HTTPS address works directly.
 4. If the server is reachable only through SSH, choose **SSH-туннель** and select a configured Windows OpenSSH profile instead.
 
-The [release](https://github.com/elstatic/bb-windows/releases/tag/v0.2.0) includes
+The [release](https://github.com/elstatic/bb-windows/releases/tag/v0.3.0) includes
 SHA256 checksums. Installing a newer version over the existing one preserves
 settings and browser sessions. Open **BB → Подключение…** to change the server.
 
@@ -55,11 +57,16 @@ explicit handoff. You can revoke control at any time.
 See [browser setup and CLI/SDK usage](apps/windows-client/README.md#browser-control-and-tailscale).
 Manual browsing and the remote interface work without a local WSL daemon.
 
+## Automatic updates
+
+Starting with 0.3, stable GitHub releases download automatically and install on exit.
+Use **BB → Проверить обновления…** or **Перезапустить и обновить**.
+[Publisher instructions and CLI/SDK](apps/windows-client/README.md#automatic-updates).
+
 ## Current limits
 
 - Importing signed-in sessions from Windows Chrome/Edge is not implemented. Sign in inside the embedded browser.
-- BB Connect account pairing is not implemented. Use a direct address or SSH.
-- Updates require a new installer; there is no automatic update feed or code-signing certificate.
+- Installers are unsigned. Versions 0.1/0.2 need one manual upgrade to enable automatic updates.
 - Native Windows agent/provider execution is outside this client. Local agents use WSL.
 
 ## Build from source

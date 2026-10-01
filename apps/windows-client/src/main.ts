@@ -1,4 +1,7 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, powerMonitor, session, shell, webContents, type IpcMainEvent, type IpcMainInvokeEvent } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, powerMonitor, safeStorage, screen, session, shell, webContents, type IpcMainEvent, type IpcMainInvokeEvent } from "electron";
+import { NsisUpdater } from "electron-updater";
+import { createUpdateService } from "./update-service.js";
+import type { ClientAction } from "./client-actions.js";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -19,7 +22,12 @@ import * as browserIpc from "../../desktop/src/desktop-browser-ipc.js";
 import { bbDesktopBrowserTabRefSchema } from "@bb/desktop-contract";
 import { createDesktopBrowserBroker } from "../../desktop/src/desktop-browser-broker.js";
 import { createWslBrowserClient } from "./wsl-browser-client.js";
-import { connectionSchema, connectionUrl, DEFAULT_CONNECTION, readConnection, saveConnection, type ConnectionConfig } from "./config.js";
+import { createConnectCredentialCache } from "../../desktop/src/connect-credential-cache.js";
+import { deriveConnectBaseUrl } from "@bb/connect-client";
+import { createConnectService } from "./connect-service.js";
+import { connectActionSchema, type ConnectAction } from "./connect-contract.js";
+import { startClientControl } from "./client-control.js";
+import { connectionSchema, connectBaseUrlSchema, connectionUrl, readConnection, saveConnection, type ConnectionConfig } from "./config.js";
 import { createConnection, type ConnectionState } from "./connection.js";
 
 const appId = "dev.bb.windows-client";
@@ -45,6 +53,7 @@ async function run() {
   };
   let config: ConnectionConfig | null = null;
   let settings: BrowserWindow | null = null;
+  let signInWindow: BrowserWindow | null = null;
   let quitting = false;
   let quitReady = false;
   let smokeStarted = false;
@@ -55,7 +64,12 @@ async function run() {
   let main: BrowserWindow;
   const windows = new Set<BrowserWindow>();
   const localViews = new Set<string>();
-  const info = { platform: "windows", version: app.getVersion(), lastCheckedAt: null, latestVersion: null, pendingVersion: null, updateAvailable: false, updateDownloaded: false, serverDaemonLogsAvailable: false };
+  const updater = new NsisUpdater();
+  updater.logger = { info: message => { void log(`Updater: ${message}`); }, warn: () => { void log("Updater warning"); }, error: () => { void log("Updater error"); } };
+  const updates = createUpdateService({ updater, version: app.getVersion(), enabled: app.isPackaged, log: message => { void log(message); }, changed: info => {
+    for (const window of windows) if (!window.isDestroyed()) window.webContents.send(desktopIpc.BB_DESKTOP_INFO_CHANGED_CHANNEL, info);
+    installMenu();
+  } });
   const origin = () => config ? new URL(connectionUrl(config)).origin : null;
   const trusted = (event: IpcMainEvent | IpcMainInvokeEvent) => {
     const window = BrowserWindow.fromWebContents(event.sender);
@@ -96,10 +110,83 @@ async function run() {
     if (command === "in") focused.setZoomFactor(Math.min(3, value + .1));
     if (command === "out") focused.setZoomFactor(Math.max(.5, value - .1));
   };
-  const connection = createConnection(state => { void applyState(state); }, async url => probeBbServer({ serverUrl: url, timeoutMs: 2000 }));
+  const connectService = createConnectService({
+    cache: createConnectCredentialCache({ userDataPath: userData, encryption: safeStorage }),
+    cookies: session.defaultSession.cookies,
+    getConfig: () => config,
+    onUnauthorized: () => { settings?.webContents.send("bb-windows:connect-changed"); },
+  });
+  await connectService.initialize();
+  const connection = createConnection(state => { void applyState(state); }, async url => probeBbServer({
+    serverUrl: url, timeoutMs: 4000, fetchImpl: (input, init) => session.defaultSession.fetch(input, { ...init, redirect: "error" }),
+  }), { authorize: async (target, isCurrent) => { if (target.kind === "connect") await connectService.authenticate(target, isCurrent); } });
+  async function setConnection(payload: unknown) {
+    const next = connectionSchema.parse(payload);
+    if (next.kind === "connect") {
+      const account = await connectService.list(next.baseUrl);
+      if (!account.servers.some(server => server.handle === next.handle)) throw new Error("Этот сервер недоступен в текущем аккаунте BB Connect.");
+    }
+    config = await saveConnection(configPath, next);
+    connectService.reset();
+    browserClient.reconnect();
+    void connection.configure(config);
+    settings?.close();
+    return { ok: true };
+  }
+  function openConnectSignIn(baseUrl: string) {
+    const base = new URL(connectBaseUrlSchema.parse(baseUrl)).origin;
+    if (signInWindow && !signInWindow.isDestroyed()) { signInWindow.focus(); return { opened: true }; }
+    const login = new BrowserWindow({ width: 600, height: 740, parent: settings ?? main, title: "Войти в BB Connect", webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false } });
+    signInWindow = login;
+    const cookieName = new URL(base).protocol === "https:" ? "__Secure-better-auth.session_token" : "better-auth.session_token";
+    let completed = false;
+    const done = async () => {
+      if (login.isDestroyed() || completed) return;
+      completed = true;
+      await connectService.useAccountSession();
+      if (!login.isDestroyed()) login.close();
+      settings?.webContents.send("bb-windows:connect-changed");
+      if (config?.kind === "connect" && new URL(config.baseUrl).origin === base) void connection.ensure();
+    };
+    const cookieChanged = (_event: Electron.Event, cookie: Electron.Cookie, _cause: string, removed: boolean) => { if (!removed && cookie.name === cookieName && (cookie.domain ?? "").replace(/^\./, "") === new URL(base).hostname) void done().catch(() => { completed = false; void log("Could not update BB Connect sign-in cache"); }); };
+    session.defaultSession.cookies.on("changed", cookieChanged);
+    login.webContents.setWindowOpenHandler(({ url }) => { if (url.startsWith("https://") || (new URL(base).protocol === "http:" && url.startsWith(base + "/"))) { void login.loadURL(url); } return { action: "deny" }; });
+    login.webContents.on("will-navigate", (event, url) => { if (!["http:", "https:"].includes(new URL(url).protocol)) event.preventDefault(); });
+    login.on("closed", () => { session.defaultSession.cookies.removeListener("changed", cookieChanged); if (signInWindow === login) signInWindow = null; });
+    void login.loadURL(new URL("/dashboard", base).href).then(async () => {
+      const cookies = await session.defaultSession.cookies.get({ url: base, name: cookieName });
+      if (cookies.some(cookie => (cookie.domain ?? "").replace(/^\./, "") === new URL(base).hostname)) await done();
+    }).catch(() => { if (!login.isDestroyed()) login.close(); });
+    return { opened: true };
+  }
+  async function connectAction(action: ConnectAction): Promise<unknown> {
+    switch (action.action) {
+      case "status": return connectService.status();
+      case "list": return connectService.list(action.baseUrl);
+      case "sign-in": return openConnectSignIn(action.baseUrl);
+      case "pair": { const result = await connectService.pair(action.baseUrl, action.code); settings?.webContents.send("bb-windows:connect-changed"); return result; }
+      case "logout": { await connectService.logout(action.baseUrl); if (config?.kind === "connect" && new URL(config.baseUrl).origin === new URL(action.baseUrl).origin) { await connection.stop(); await loadLocal("error", "Войдите в BB Connect", "Вход в аккаунт завершён. Подключитесь снова в настройках."); } return { signedOut: true }; }
+      case "bootstrap": {
+        const current = config;
+        if (!current || current.kind === "connect") throw new Error("Сначала подключитесь к своему BB напрямую или через SSH.");
+        const response = await session.defaultSession.fetch(new URL("/api/v1/plugins/connect/rpc/createMachineCode", connectionUrl(current)).href, { method: "POST", headers: { "content-type": "application/json" }, body: "null", redirect: "error", signal: AbortSignal.timeout(10000) });
+        const code = z.object({ ok: z.literal(true), result: z.object({ code: z.string().min(1), serverUrl: z.string().url() }) }).safeParse(await response.json());
+        if (!response.ok || !code.success) throw new Error("Текущий сервер не выдал код. Проверьте подключение сервера к BB Connect.");
+        if (config !== current) throw new Error("Сервер уже изменился.");
+        const baseUrl = deriveConnectBaseUrl(code.data.result.serverUrl);
+        const account = await connectService.pair(baseUrl, code.data.result.code);
+        if (config !== current) throw new Error("Сервер уже изменился.");
+        const handle = new URL(code.data.result.serverUrl).hostname.split(".")[0];
+        const target = account.servers.find(server => server.handle === handle);
+        if (!target) throw new Error("Текущий сервер отсутствует в аккаунте BB Connect.");
+        await setConnection({ kind: "connect", baseUrl, handle: target.handle, name: target.name, browserHost: { ...current.browserHost, serverUrl: current.browserHost?.serverUrl ?? connectionUrl(current) } });
+        return { connected: true, handle: target.handle, name: target.name };
+      }
+    }
+  }
   async function loadLocal(kind: "loading" | "error", title: string, message: string) {
     const url = createLocalViewUrl({ viewModel: kind === "loading" ? { kind, title, message } : {
-      kind, title, details: message, logText: "", actions: [{ id: "retry", label: "Повторить" }, { id: "choose-server", label: "Настройки подключения" }],
+      kind, title, details: message, logText: "", actions: [{ id: "retry", label: "Повторить" }, ...(config?.kind === "connect" ? [{ id: "reconnect-connect" as const, label: "Войти в BB Connect" }] : []), { id: "choose-server", label: "Настройки подключения" }],
     } });
     localViews.add(url);
     for (const window of windows) if (!window.isDestroyed()) { manager.prepareWindowReload(window); await window.loadURL(url); }
@@ -123,7 +210,7 @@ async function run() {
       }
     }
     try {
-      const response = await fetch(new URL("/api/v1/system/config", state.url), { signal: AbortSignal.timeout(4000) });
+      const response = await session.defaultSession.fetch(new URL("/api/v1/system/config", state.url).href, { signal: AbortSignal.timeout(4000) });
       if (attempt !== generation || quitting) return;
       keybindings = parseDesktopSystemConfig(await response.json()).keybindings;
       accelerators = resolveApplicationMenuAccelerators(keybindings);
@@ -176,7 +263,7 @@ async function run() {
   }
   function openSettings() {
     if (settings && !settings.isDestroyed()) { settings.focus(); return; }
-    settings = new BrowserWindow({ width: 580, height: 840, resizable: false, title: "Подключение к BB", parent: main, modal: true,
+    settings = new BrowserWindow({ width: 620, height: Math.min(900, screen.getDisplayMatching(main.getBounds()).workArea.height - 40), resizable: true, title: "Подключение к BB", parent: main, modal: true,
       webPreferences: { preload: join(root, "settings-preload.cjs"), sandbox: true, nodeIntegration: false, contextIsolation: true },
     });
     settings.setMenu(null);
@@ -186,24 +273,27 @@ async function run() {
     void settings.loadFile(join(root, "settings.html"));
   }
   const trustedSettings = (event: IpcMainInvokeEvent) => settings && event.sender === settings.webContents && event.senderFrame === event.sender.mainFrame && event.sender.getURL() === pathToFileURL(join(root, "settings.html")).href;
-  ipcMain.handle("bb-windows:connection-read", event => { if (!trustedSettings(event)) throw new Error("Invalid settings sender"); return config ?? DEFAULT_CONNECTION; });
+  ipcMain.handle("bb-windows:connection-read", event => { if (!trustedSettings(event)) throw new Error("Invalid settings sender"); return config; });
   ipcMain.handle("bb-windows:connection-save", async (event, payload: unknown) => {
     if (!trustedSettings(event)) throw new Error("Invalid settings sender");
     try {
-      config = await saveConnection(configPath, connectionSchema.parse(payload));
-      settings?.close();
-      browserClient.reconnect();
-      void connection.configure(config);
-      return { ok: true };
+      return await setConnection(payload);
     } catch (error) { return { error: error instanceof Error ? error.message : String(error) }; }
+  });
+  ipcMain.handle("bb-windows:connect-action", async (event, payload: unknown) => {
+    if (!trustedSettings(event)) throw new Error("Invalid settings sender");
+    try { return await connectAction(connectActionSchema.parse(payload)); }
+    catch (error) { return { error: error instanceof Error ? error.message : "BB Connect недоступен." }; }
   });
   function installMenu() {
     Menu.setApplicationMenu(Menu.buildFromTemplate([
       { label: "BB", submenu: [
         { label: "Подключение…", click: openSettings },
         { label: "Повторить подключение", click: () => { void connection.ensure(); } },
+        { label: "Проверить обновления…", click: () => { void updates.check().then(info => dialog.showMessageBox({ title: "Обновление BB Windows", message: info.updateDownloaded ? `Версия ${info.pendingVersion} готова к установке` : info.downloadState === "downloading" ? `Скачивается версия ${info.latestVersion}` : info.downloadState === "failed" ? "Не удалось проверить обновления. Попробуйте позднее." : "Установлена актуальная версия", detail: info.updateDownloaded ? "Обновление установится при выходе. Для установки сейчас выберите «Перезапустить и обновить» в меню BB." : "Обновления проверяются автоматически через GitHub Releases.", buttons: ["OK"] })); } },
+        { label: "Перезапустить и обновить", enabled: updates.getInfo().updateDownloaded, click: () => { updates.install(); } },
         { label: "Открыть журнал клиента", click: () => { void shell.openPath(logPath); } },
-        { label: "О BB Windows", click: () => { void dialog.showMessageBox({ title: "BB Windows", message: `BB Windows ${app.getVersion()}`, detail: "Windows-клиент BB. Обновление: установите новую версию поверх текущей. Управление браузером через локальный WSL-демон. Импорт cookies из Windows-браузеров пока недоступен. Исходный проект: get-bb/bb, MIT.", buttons: ["OK"] }); } },
+        { label: "О BB Windows", click: () => { void dialog.showMessageBox({ title: "BB Windows", message: `BB Windows ${app.getVersion()}`, detail: "Windows-клиент BB. Автообновление через GitHub Releases. Управление браузером через локальный WSL-демон. Импорт cookies из Windows-браузеров пока недоступен. Исходный проект: get-bb/bb, MIT.", buttons: ["OK"] }); } },
         { type: "separator" }, { role: "quit", label: "Выход" },
       ] },
       { label: "Файл", submenu: [
@@ -219,15 +309,16 @@ async function run() {
       { label: "Окно", submenu: [{ role: "minimize" }, { role: "close" }] },
     ]));
   }
-  for (const channel of [desktopIpc.BB_DESKTOP_GET_INFO_CHANNEL, desktopIpc.BB_DESKTOP_CHECK_FOR_UPDATES_CHANNEL]) ipcMain.handle(channel, event => { if (!trusted(event)) return null; return info; });
-  ipcMain.handle(desktopIpc.BB_DESKTOP_INSTALL_UPDATE_CHANNEL, () => undefined);
+  ipcMain.handle(desktopIpc.BB_DESKTOP_GET_INFO_CHANNEL, event => trusted(event) ? updates.getInfo() : null);
+  ipcMain.handle(desktopIpc.BB_DESKTOP_CHECK_FOR_UPDATES_CHANNEL, event => trusted(event) ? updates.check() : null);
+  ipcMain.handle(desktopIpc.BB_DESKTOP_INSTALL_UPDATE_CHANNEL, event => { if (trusted(event)) updates.install(); });
   ipcMain.handle(windowIpc.BB_DESKTOP_GET_WINDOW_STATE_CHANNEL, event => trusted(event) ? { isFullScreen: BrowserWindow.fromWebContents(event.sender)?.isFullScreen() ?? false } : null);
   ipcMain.handle(windowIpc.BB_DESKTOP_OPEN_DATA_DIRECTORY_CHANNEL, event => { if (trusted(event)) return shell.openPath(userData); });
   ipcMain.handle(windowIpc.BB_DESKTOP_OPEN_SERVER_DAEMON_LOGS_CHANNEL, () => undefined);
   ipcMain.on(desktopIpc.BB_DESKTOP_OPEN_EXTERNAL_URL_CHANNEL, (event, value) => { if (trusted(event)) openExternal(value); });
   ipcMain.on(desktopIpc.BB_DESKTOP_ZOOM_COMMAND_CHANNEL, (event, command) => { if (trusted(event)) zoom(command); });
   ipcMain.on(desktopIpc.BB_DESKTOP_SET_THEME_CHANNEL, (event, value) => { if (trusted(event) && ["system", "dark", "light"].includes(value)) nativeTheme.themeSource = value; });
-  ipcMain.on(STARTUP_ACTION_CHANNEL, (event, value) => { if (!trusted(event)) return; if (value === "retry") void connection.ensure(); if (value === "choose-server") openSettings(); });
+  ipcMain.on(STARTUP_ACTION_CHANNEL, (event, value) => { if (!trusted(event)) return; if (value === "retry") void connection.ensure(); if (value === "choose-server") openSettings(); if (value === "reconnect-connect" && config?.kind === "connect") openConnectSignIn(config.baseUrl); });
   ipcMain.handle(browserIpc.BB_DESKTOP_BROWSER_TARGET_CHANNEL, event => trusted(event) ? broker.getTarget(event.sender.id) : null);
   ipcMain.handle(browserIpc.BB_DESKTOP_BROWSER_GET_CONTROL_CHANNEL, (event, payload: unknown) => {
     const parsed = bbDesktopBrowserTabRefSchema.safeParse(payload);
@@ -251,10 +342,19 @@ async function run() {
   });
   main = await createWindow();
   installMenu();
+  const clientAction = async (action: ClientAction) => {
+    if (action.action === "update-status") return updates.getInfo();
+    if (action.action === "update-check") return updates.check();
+    if (action.action === "update-install") return { installing: updates.install() };
+    return connectAction(connectActionSchema.parse(action));
+  };
+  const control = await startClientControl(userData, clientAction);
+  const updatePoll = setInterval(() => { void updates.check(); }, 6 * 60 * 60 * 1000);
+  const updateStartup = setTimeout(() => { void updates.check(); }, 15000);
   app.on("second-instance", () => { const target = main.isDestroyed() ? [...windows][0] : main; if (!target) return; if (target.isMinimized()) target.restore(); target.show(); target.focus(); });
   app.on("window-all-closed", () => app.quit());
   const poll = setInterval(() => { if (config && !settings && !quitting) void connection.ensure(); }, 15000);
-  powerMonitor.on("resume", () => { if (!quitting) void connection.ensure(); });
+  powerMonitor.on("resume", () => { if (!quitting) { connectService.renewIfDue(); void updates.check(); void connection.ensure(); } });
   app.on("before-quit", event => {
     if (quitReady) return;
     event.preventDefault();
@@ -262,11 +362,16 @@ async function run() {
     quitting = true;
     generation += 1;
     clearInterval(poll);
+    clearInterval(updatePoll);
+    clearTimeout(updateStartup);
+    updates.stop();
+    connectService.stop();
+    signInWindow?.close();
     browserClient.stop();
     broker.dispose();
     manager.destroyAll();
     findManager.destroyAll();
-    void connection.stop().finally(() => { quitReady = true; app.quit(); });
+    void Promise.all([connection.stop(), control.close()]).finally(() => { quitReady = true; app.quit(); });
   });
   try { config = await readConnection(configPath); }
   catch (error) { await loadLocal("error", "Проверьте настройки подключения", error instanceof Error ? error.message : String(error)); }
