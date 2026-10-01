@@ -4,13 +4,14 @@ Windows-клиент для [BB](https://github.com/get-bb/bb): подключе
 серверу, работа с агентами и встроенный браузер, которым агент может управлять
 через локальный WSL-демон.
 
-[Скачать 0.3.0](https://github.com/elstatic/bb-windows/releases/tag/v0.3.0) ·
+[Скачать 0.3.1](https://github.com/elstatic/bb-windows/releases/tag/v0.3.1) ·
 [English](README.md) · [Подробная документация](apps/windows-client/README.md)
 
 Версия для тестирования. Установщик пока без цифровой подписи, обновления из GitHub скачиваются автоматически.
 
 ## Возможности
 
+- Показать локальный файл в Проводнике и скопировать Windows-путь, включая WSL.
 - Установщик для Windows x64, ярлыки на рабочем столе и в меню «Пуск».
 - Прямое подключение к BB по HTTP(S), в том числе через Tailscale Serve.
 - Подключение через профиль Windows OpenSSH и восстановление после обрыва.
@@ -25,7 +26,7 @@ Windows-клиент для [BB](https://github.com/get-bb/bb): подключе
 
 ## Установка
 
-1. Скачай [BB-Windows-0.3.0-x64-Setup.exe](https://github.com/elstatic/bb-windows/releases/download/v0.3.0/BB-Windows-0.3.0-x64-Setup.exe).
+1. Скачай [BB-Windows-0.3.1-x64-Setup.exe](https://github.com/elstatic/bb-windows/releases/download/v0.3.1/BB-Windows-0.3.1-x64-Setup.exe).
 2. Установи и запусти **BB Windows**. Windows может показать предупреждение из-за отсутствия подписи.
 3. Выбери «BB Connect», войди и выбери сервер, либо выбери «Адрес сервера» и введи адрес своего BB. Если Windows видит сервер через Tailscale Serve, достаточно его HTTPS-адреса.
 4. Для сервера, доступного только через SSH, выбери «SSH-туннель» и укажи свой настроенный профиль Windows OpenSSH.

@@ -1,6 +1,8 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, powerMonitor, safeStorage, screen, session, shell, webContents, type IpcMainEvent, type IpcMainInvokeEvent } from "electron";
+import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeTheme, powerMonitor, safeStorage, screen, session, shell, webContents, type IpcMainEvent, type IpcMainInvokeEvent } from "electron";
 import { NsisUpdater } from "electron-updater";
 import { createUpdateService } from "./update-service.js";
+import { fileActionSchema, parseFileLink, type FileAction } from "./file-contract.js";
+import { createWindowsFileService } from "./windows-files.js";
 import type { ClientAction } from "./client-actions.js";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -70,6 +72,7 @@ async function run() {
     for (const window of windows) if (!window.isDestroyed()) window.webContents.send(desktopIpc.BB_DESKTOP_INFO_CHANGED_CHANNEL, info);
     installMenu();
   } });
+  const files = createWindowsFileService({ distribution: () => config?.browserHost?.distribution, copy: path => clipboard.writeText(path), reveal: path => shell.showItemInFolder(path) });
   const origin = () => config ? new URL(connectionUrl(config)).origin : null;
   const trusted = (event: IpcMainEvent | IpcMainInvokeEvent) => {
     const window = BrowserWindow.fromWebContents(event.sender);
@@ -309,6 +312,28 @@ async function run() {
       { label: "Окно", submenu: [{ role: "minimize" }, { role: "close" }] },
     ]));
   }
+  const fileAction = (payload: FileAction) => files.execute(payload);
+  ipcMain.handle("bb-windows:file-action", (event, payload: unknown) => {
+    if (!trusted(event)) throw new Error("Untrusted file request");
+    return fileAction(fileActionSchema.parse(payload));
+  });
+  ipcMain.handle("bb-windows:file-menu", (event, payload: unknown) => {
+    if (!trusted(event)) return null;
+    const { path } = fileActionSchema.parse({ ...z.object({ path: z.string() }).strict().parse(payload), action: "file-resolve" });
+    const showError = (error: unknown) => { void dialog.showMessageBox({ type: "error", title: "Файл недоступен", message: error instanceof Error ? error.message : "Не удалось открыть файл." }); };
+    return new Promise<string | null>(resolve => {
+      let selected: string | null = null;
+      const menu = Menu.buildFromTemplate([
+        { label: "Показать в проводнике", click: () => { void fileAction({ action: "file-reveal", path }).catch(showError); } },
+        { label: "Копировать путь для Windows", click: () => { void fileAction({ action: "file-copy", path }).catch(showError); } },
+        { type: "separator" },
+        { label: "Открыть предпросмотр", click: () => { selected = "preview"; } },
+        { label: "Копировать исходный путь", click: () => clipboard.writeText(parseFileLink(path) ?? path) },
+        { label: "Копировать имя файла", click: () => clipboard.writeText((parseFileLink(path) ?? path).split(/[\\/]/).at(-1) ?? path) },
+      ]);
+      menu.popup({ window: BrowserWindow.fromWebContents(event.sender) ?? undefined, callback: () => resolve(selected) });
+    });
+  });
   ipcMain.handle(desktopIpc.BB_DESKTOP_GET_INFO_CHANNEL, event => trusted(event) ? updates.getInfo() : null);
   ipcMain.handle(desktopIpc.BB_DESKTOP_CHECK_FOR_UPDATES_CHANNEL, event => trusted(event) ? updates.check() : null);
   ipcMain.handle(desktopIpc.BB_DESKTOP_INSTALL_UPDATE_CHANNEL, event => { if (trusted(event)) updates.install(); });
@@ -346,6 +371,7 @@ async function run() {
     if (action.action === "update-status") return updates.getInfo();
     if (action.action === "update-check") return updates.check();
     if (action.action === "update-install") return { installing: updates.install() };
+    if (action.action.startsWith("file-")) return fileAction(fileActionSchema.parse(action));
     return connectAction(connectActionSchema.parse(action));
   };
   const control = await startClientControl(userData, clientAction);

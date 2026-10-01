@@ -5,6 +5,12 @@ import { readConnection, saveConnection } from "./config.js";
 
 async function run() {
   const [command, ...args] = process.argv.slice(2);
+  if (command === "file") {
+    const dataIndex = args.indexOf("--data-dir"), pathIndex = args.indexOf("--path");
+    if (dataIndex < 0 || !args[dataIndex + 1] || pathIndex < 0 || !args[pathIndex + 1] || !["resolve", "copy", "reveal"].includes(args[0])) throw new Error("Usage: node cli.cjs file resolve|copy|reveal --data-dir <app-data directory> --path <absolute path>");
+    console.log(JSON.stringify(await requestClientControl(args[dataIndex + 1], { action: `file-${args[0]}`, path: args[pathIndex + 1] }), null, 2));
+    return;
+  }
   if (command === "update") {
     const dataIndex = args.indexOf("--data-dir");
     if (dataIndex < 0 || !args[dataIndex + 1] || !["status", "check", "install"].includes(args[0])) throw new Error("Usage: node cli.cjs update status|check|install --data-dir <BB Windows app-data directory>");

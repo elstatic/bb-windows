@@ -1,6 +1,6 @@
 # BB Windows
 
-[![Windows x64](https://img.shields.io/badge/platform-Windows%20x64-0078D4)](https://github.com/elstatic/bb-windows/releases/tag/v0.3.0)
+[![Windows x64](https://img.shields.io/badge/platform-Windows%20x64-0078D4)](https://github.com/elstatic/bb-windows/releases/tag/v0.3.1)
 [![MIT license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Windows build](https://github.com/elstatic/bb-windows/actions/workflows/build-windows-client.yml/badge.svg)](https://github.com/elstatic/bb-windows/actions/workflows/build-windows-client.yml)
 
@@ -8,7 +8,7 @@ A Windows desktop client for [BB](https://github.com/get-bb/bb), the agentic IDE
 Connect to your existing server, work with agents, and let them control browser
 tabs on your Windows machine through an enrolled WSL host.
 
-[Download 0.3.0](https://github.com/elstatic/bb-windows/releases/tag/v0.3.0) ·
+[Download 0.3.1](https://github.com/elstatic/bb-windows/releases/tag/v0.3.1) ·
 [Setup & technical details](apps/windows-client/README.md) ·
 [Русский](README.ru.md) · [Contributing](CONTRIBUTING.md)
 
@@ -18,6 +18,7 @@ tabs on your Windows machine through an enrolled WSL host.
 
 | Feature | Behavior |
 | --- | --- |
+| Windows file actions | Reveal a local file in Explorer and copy its Windows/WSL path |
 | Windows installer | Per-user installation, Start menu and desktop shortcuts |
 | BB Connect | Account sign-in, device pairing and owned-server selection |
 | Automatic updates | Stable GitHub Releases, background downloads, install on exit |
@@ -34,12 +35,12 @@ installer does not bundle a BB server or host daemon.
 
 ## Install and connect
 
-1. Download [BB-Windows-0.3.0-x64-Setup.exe](https://github.com/elstatic/bb-windows/releases/download/v0.3.0/BB-Windows-0.3.0-x64-Setup.exe).
+1. Download [BB-Windows-0.3.1-x64-Setup.exe](https://github.com/elstatic/bb-windows/releases/download/v0.3.1/BB-Windows-0.3.1-x64-Setup.exe).
 2. Run the installer and launch **BB Windows**. Windows may show a warning because the installer is unsigned.
 3. Choose **BB Connect**, sign in and select your server, or choose **Адрес сервера** and enter the BB origin, such as `https://bb.example.com/`. A reachable Tailscale Serve HTTPS address works directly.
 4. If the server is reachable only through SSH, choose **SSH-туннель** and select a configured Windows OpenSSH profile instead.
 
-The [release](https://github.com/elstatic/bb-windows/releases/tag/v0.3.0) includes
+The [release](https://github.com/elstatic/bb-windows/releases/tag/v0.3.1) includes
 SHA256 checksums. Installing a newer version over the existing one preserves
 settings and browser sessions. Open **BB → Подключение…** to change the server.
 
