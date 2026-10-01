@@ -17,10 +17,10 @@ jobs:
       contents: write
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.release_tag || github.ref }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -41,7 +41,7 @@ jobs:
         run: |
           $version = (Get-Content apps/windows-client/package.json | ConvertFrom-Json).version
           Get-ChildItem apps/windows-client/release/*Setup.exe | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" } | Set-Content -Encoding ascii "apps/windows-client/release/SHA256SUMS-$version.txt"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: bb-windows-x64
           path: |
