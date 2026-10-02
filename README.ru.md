@@ -63,6 +63,6 @@ Windows-клиент для [BB](https://github.com/get-bb/bb): подключе
 
 В 0.3 добавлены вход через BB Connect, выбор сервера и автообновления из GitHub Releases. Обновление скачивается в фоне и устанавливается при выходе; настройки сохраняются. Проверка и перезапуск доступны в меню **BB**. [CLI, SDK и публикация обновлений](apps/windows-client/README.md#automatic-updates).
 
-## Remote file links plugin
+## Плагин для серверных файлов
 
-[Windows File Links](plugins/windows-file-links/README.md) downloads remote thread reports to a verified local viewing copy and reuses matching synchronized project files. Install it on the BB server; the Windows installer stays unchanged. Upstream BB core is not patched for this feature.
+[Windows File Links](plugins/windows-file-links/README.md) получает локальные копии серверных отчётов и использует синхронизируемые файлы проекта после проверки содержимого. Плагин устанавливается на сервер BB; обновление установщика Windows не требуется. Ядро BB для этой функции не меняется.

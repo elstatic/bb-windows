@@ -13,7 +13,7 @@ export async function materialize(dataDir: string, input: { sourceHostId: string
       if (info.isFile() && info.size === bytes.length && digest(await readFile(input.candidatePath)) === input.sha256) return { path: input.candidatePath, source: "synced" as const };
     } catch {}
   }
-  const key = digest(`${input.sourceHostId}\0${input.sourcePath}`);
+  const key = digest(`${input.sourceHostId}\0${input.sourcePath}`).slice(0, 32);
   const directory = join(dataDir, "files", key);
   const filename = basename(input.sourcePath).replace(/[<>:"\\|?*\u0000-\u001f]/gu, "_").replace(/[. ]+$/u, "") || "file";
   const path = join(directory, filename);

@@ -2,7 +2,7 @@
 
 A BB plugin for the [BB Windows client](https://github.com/elstatic/bb-windows). Adds Explorer and Windows clipboard actions to file-link context menus without modifying upstream BB.
 
-Files are resolved against their actual thread-storage host or the current thread environment. Local files use the native Windows bridge. Remote files are copied on demand into this plugin's private cache on the selected Windows WSL browser host. Each transfer is size-limited to 32 MiB and SHA-256 verified. Repeat actions refresh the cached file from the source. This is a local viewing copy, not two-way synchronization.
+Files are resolved against their actual thread-storage host or the current thread environment. Local files use the native Windows bridge. Remote files are copied on demand into this plugin's private cache on the selected Windows WSL browser host. Cache directory names use 128 bits of the source identity hash to keep Windows paths short. Each transfer is size-limited to 32 MiB and SHA-256 verified. Repeat actions refresh the cached file from the source. This is a local viewing copy, not two-way synchronization.
 
 Optional `mappings` settings contain a JSON array of `{sourceHostId, clientHostId, sourceRoot, localRoot}`; roots use absolute paths on their respective Linux/WSL hosts. A matching synchronized file is reused only when its content matches the source. Missing or stale local files fall back to a downloaded copy; local edits are never overwritten. Windows drives can be addressed through `/mnt/c/...`. Thread storage is separate from project folder synchronization.
 
