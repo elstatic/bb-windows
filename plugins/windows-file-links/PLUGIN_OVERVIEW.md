@@ -1,0 +1,1 @@
+Open server files in Windows Explorer and copy a usable Windows path directly from a BB file link. Remote reports are downloaded on demand; synchronized project files are reused after a content check. Works with the BB Windows client's native bridge and leaves upstream BB unchanged.

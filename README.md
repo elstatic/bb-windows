@@ -96,3 +96,7 @@ Michael Yong's copyright notice are preserved in [LICENSE](LICENSE).
 
 [Changelog](CHANGELOG.md) · [Report a bug](https://github.com/elstatic/bb-windows/issues/new?template=bug.yml) ·
 [Request a feature](https://github.com/elstatic/bb-windows/issues/new?template=feature.yml)
+
+## Remote file links plugin
+
+[Windows File Links](plugins/windows-file-links/README.md) downloads remote thread reports to a verified local viewing copy and reuses matching synchronized project files. Install it on the BB server; the Windows installer stays unchanged. Upstream BB core is not patched for this feature.
