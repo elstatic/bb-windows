@@ -53,7 +53,7 @@ export default definePluginApp(app => {
     };
     const decorate = () => {
       if (!pending) return;
-      for (const element of document.querySelectorAll<HTMLElement>('[role="menu"]')) {
+      for (const element of Array.from(document.querySelectorAll<HTMLElement>('[role="menu"]'))) {
         if (element.dataset.windowsFileLinks || !element.isConnected) continue;
         const originals = Array.from(element.querySelectorAll<HTMLElement>('[role="menuitem"]')).filter(item => item.closest('[role="menu"]') === element);
         const copyItem = originals.find(item => /^(Копировать путь к файлу|Copy file path|Copy path)$/iu.test(item.textContent?.trim() ?? ""));
