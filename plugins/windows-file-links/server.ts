@@ -1,12 +1,12 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { BbPluginApi } from "@get-bb/plugin-sdk";
-import { hostContract, MAX_BYTES, prepareInput, rpcContract } from "./contract.ts";
+import { actionInput, hostContract, MAX_BYTES, prepareInput, rpcContract } from "./contract.ts";
 import { contained, mapPath, normalizeSource } from "./paths.ts";
 
 const mappingsSchema = z.array(z.object({ sourceHostId: z.string(), clientHostId: z.string(), sourceRoot: z.string().startsWith("/"), localRoot: z.string().startsWith("/") }).strict());
 export default async function plugin(bb: BbPluginApi) {
-  const settings = bb.settings.define({ mappings: { type: "string", label: "Synced folder mappings (JSON)", default: "[]" } });
+  const settings = bb.settings.define({ mappings: { type: "string", label: "Synced folder mappings (JSON)", default: "[]" }, clientHostId: { type: "string", label: "Windows / WSL host for Explorer (fallback)", default: "" } });
   const host = bb.hosts.experimental_client({ contract: hostContract });
   async function prepare(input: z.infer<typeof prepareInput>) {
     const path = normalizeSource(input.path);
@@ -27,15 +27,19 @@ export default async function plugin(bb: BbPluginApi) {
     if (sourceHostId === input.clientHostId) return { path, source: "original" as const };
     const file = await bb.sdk.files.read({ hostId: sourceHostId, rootPath, path });
     const bytes = Buffer.from(file.content, file.contentEncoding === "utf8" ? "utf8" : "base64");
-    if (file.sizeBytes > MAX_BYTES || bytes.length !== file.sizeBytes) throw new Error("Файл слишком большой или получен не полностью (максимум 32 МБ).");
+    if (file.sizeBytes > MAX_BYTES || bytes.length !== file.sizeBytes) throw new Error("Файл слишком большой или получен не полностью (максимум 20 МБ).");
     const mappings = mappingsSchema.parse(JSON.parse((await settings.get()).mappings));
     return host.call("materialize", { sourceHostId, sourcePath: path, content: bytes.toString("base64"), sha256: createHash("sha256").update(bytes).digest("hex"), candidatePath: mapPath(sourceHostId, input.clientHostId, path, mappings) }, { hostId: input.clientHostId });
   }
-  bb.rpc.register(rpcContract, { prepare });
+  async function action(input: z.infer<typeof actionInput>) {
+    const prepared = input.path.startsWith("/") ? await prepare(input) : { path: input.path };
+    return host.call("action", { path: prepared.path, action: input.action }, { hostId: input.clientHostId });
+  }
+  bb.rpc.register(rpcContract, { prepare, action, client: async () => ({ hostId: (await settings.get()).clientHostId || null }) });
   bb.cli.register({ name: "windows-file-links", summary: "Prepare a verified local copy of a remote BB file", commands: [{ name: "prepare", summary: "Download or locate a file on a client host", usage: "bb windows-file-links prepare <path> <thread-id> <client-host-id> [--json]" }], async run(argv) {
     const [command, path, threadId, clientHostId] = argv.filter(v => v !== "--json");
-    if (command !== "prepare") return { exitCode: 1, stderr: "Usage: bb windows-file-links prepare <path> <thread-id> <client-host-id> [--json]" };
-    const result = await prepare(prepareInput.parse({ path, threadId, clientHostId }));
-    return { exitCode: 0, stdout: argv.includes("--json") ? JSON.stringify(result) : result.path };
+    if (!["prepare", "copy", "reveal", "resolve"].includes(command)) return { exitCode: 1, stderr: "Usage: bb windows-file-links prepare <path> <thread-id> <client-host-id> [--json]" };
+    const result = command === "prepare" ? await prepare(prepareInput.parse({ path, threadId, clientHostId })) : await action(actionInput.parse({ path, threadId, clientHostId, action: command }));
+    return { exitCode: 0, stdout: argv.includes("--json") ? JSON.stringify(result) : JSON.stringify(result) };
   } });
 }

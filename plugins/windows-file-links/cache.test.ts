@@ -40,3 +40,12 @@ test("mapping requires both host identities and a contained folder, never matchi
   assert.equal(parseFileLink("file:///home/clawd/схема.html#L10"), "/home/clawd/схема.html");
   assert.equal(parseFileLink("file://foreign/share/a"), null);
 });
+
+import { powershellScript } from "./windows.ts";
+test("native actions treat quotes, Cyrillic and shell metacharacters as data", () => {
+  const path = "C:\\Reports\\Схема $(calc) ' test.html";
+  const script = powershellScript(path, "copy");
+  assert.ok(!script.includes(path)); assert.ok(script.includes(Buffer.from(path).toString("base64")));
+  assert.ok(script.includes("Set-Clipboard -Value $path"));
+  assert.ok(powershellScript(path, "reveal").includes("explorer.exe"));
+});
