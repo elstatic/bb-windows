@@ -23,8 +23,8 @@ export default async function plugin(bb: BbPluginApi) {
       rootPath = thread.environment.path;
       sourceHostId = thread.environment.hostId;
     }
-    if (!contained(rootPath, path)) throw new Error("Файл находится вне хранилища треда или рабочей папки.");
     if (sourceHostId === input.clientHostId) return { path, source: "original" as const };
+    if (!contained(rootPath, path)) throw new Error("Файл находится вне хранилища треда или рабочей папки.");
     const file = await bb.sdk.files.read({ hostId: sourceHostId, rootPath, path });
     const bytes = Buffer.from(file.content, file.contentEncoding === "utf8" ? "utf8" : "base64");
     if (file.sizeBytes > MAX_BYTES || bytes.length !== file.sizeBytes) throw new Error("Файл слишком большой или получен не полностью (максимум 20 МБ).");
