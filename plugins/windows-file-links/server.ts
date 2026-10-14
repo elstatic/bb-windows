@@ -36,9 +36,9 @@ export default async function plugin(bb: BbPluginApi) {
     return host.call("action", { path: prepared.path, action: input.action }, { hostId: input.clientHostId });
   }
   bb.rpc.register(rpcContract, { prepare, action, client: async () => ({ hostId: (await settings.get()).clientHostId || null }) });
-  bb.cli.register({ name: "windows-file-links", summary: "Prepare a verified local copy of a remote BB file", commands: [{ name: "prepare", summary: "Download or locate a file on a client host", usage: "bb windows-file-links prepare <path> <thread-id> <client-host-id> [--json]" }], async run(argv) {
+  bb.cli.register({ name: "windows-file-links", summary: "Prepare a verified local copy of a remote BB file", commands: ["prepare", "copy", "reveal", "resolve"].map(name => ({ name, summary: "Prepare or act on a file on the Windows client host", usage: `bb windows-file-links ${name} <path> <thread-id> <client-host-id> [--json]` })), async run(argv) {
     const [command, path, threadId, clientHostId] = argv.filter(v => v !== "--json");
-    if (!["prepare", "copy", "reveal", "resolve"].includes(command)) return { exitCode: 1, stderr: "Usage: bb windows-file-links prepare <path> <thread-id> <client-host-id> [--json]" };
+    if (!["prepare", "copy", "reveal", "resolve"].includes(command)) return { exitCode: 1, stderr: "Usage: bb windows-file-links prepare|copy|reveal|resolve <path> <thread-id> <client-host-id> [--json]" };
     const result = command === "prepare" ? await prepare(prepareInput.parse({ path, threadId, clientHostId })) : await action(actionInput.parse({ path, threadId, clientHostId, action: command }));
     return { exitCode: 0, stdout: argv.includes("--json") ? JSON.stringify(result) : JSON.stringify(result) };
   } });

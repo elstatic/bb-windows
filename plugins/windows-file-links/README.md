@@ -12,7 +12,7 @@ Optional `mappings` settings contain a JSON array of `{sourceHostId, clientHostI
 bb plugin install git:https://github.com/elstatic/bb-windows.git --subdirectory plugins/windows-file-links --yes
 ```
 
-Requires a Windows desktop and an enrolled native Windows or WSL host. Set `clientHostId` to your local Windows/WSL machine ID if the desktop browser target is unavailable. Browser-only BB clients keep their regular menus. Disabling the plugin restores the client's existing menu. Host-side plugin code performs Windows clipboard, WSL path conversion and Explorer operations through PowerShell. No custom preload bridge or patched desktop is required.
+Requires a Windows desktop and an enrolled native Windows or WSL host. Set `clientHostId` to your local Windows/WSL machine ID if the desktop browser target is unavailable. Browser-only BB clients keep their regular menus. Adds actions to BB's existing file menu, preserving Download, Open in, and original copy actions. Disabling the plugin removes only its added items. Existing files on the selected local host can be opened outside the current project folder. Remote transfers are confined to the thread workspace or storage root. Host-side plugin code performs Windows clipboard, WSL path conversion and Explorer operations through PowerShell. No custom preload bridge or patched desktop is required.
 
 ## SDK and CLI
 

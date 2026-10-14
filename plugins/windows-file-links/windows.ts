@@ -6,7 +6,7 @@ import { parseFileLink } from "./links.ts";
 const run = promisify(execFile);
 export function powershellScript(path: string, action: "copy" | "reveal" | "resolve") {
   const encoded = Buffer.from(path, "utf8").toString("base64");
-  const operation = action === "copy" ? "Set-Clipboard -Value $path" : action === "reveal" ? `Start-Process -FilePath explorer.exe -ArgumentList ('/select,"' + $path + '"')` : "";
+  const operation = action === "copy" ? "Set-Clipboard -Value $path" : action === "reveal" ? `Start-Process -FilePath explorer.exe -ArgumentList ('/select,"' + $path + '"'); $folder = Split-Path -LiteralPath $path; $name = [IO.Path]::GetFileName($path); $shell = New-Object -ComObject Shell.Application; for ($attempt = 0; $attempt -lt 10; $attempt++) { $selected = $false; foreach ($window in $shell.Windows()) { try { if ($window.Document.Folder.Self.Path -eq $folder) { $item = $window.Document.Folder.ParseName($name); if ($null -ne $item) { $window.Document.SelectItem($item, 29); $selected = $true } } } catch {} }; if ($selected) { break }; Start-Sleep -Milliseconds 300 }` : "";
   return `$ErrorActionPreference = 'Stop'; $path = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${encoded}')); if (-not (Test-Path -LiteralPath $path)) { throw 'File does not exist on this PC' }; ${operation}; Write-Output 'ok'`;
 }
 export async function windowsAction(input: { path: string; action: "copy" | "reveal" | "resolve" }) {

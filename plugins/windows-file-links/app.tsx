@@ -2,7 +2,6 @@ import { definePluginApp } from "@get-bb/plugin-sdk/app";
 import { parseFileLink } from "./links.ts";
 
 type Bridge = {
-  bbWindowsFiles?: { copy(path: string): Promise<unknown>; reveal(path: string): Promise<unknown> };
   bbDesktop?: { getInfo(): Promise<{ platform: string }>; browser?: { getTarget(): Promise<{ hostId: string } | null> } };
 };
 
@@ -10,11 +9,8 @@ export default definePluginApp(app => {
   app.contentScripts.register({ id: "windows-file-menu", async mount({ signal, pluginId }) {
     const bridge = window as Window & Bridge;
     if (!bridge.bbDesktop || (await bridge.bbDesktop.getInfo()).platform !== "windows" || signal.aborted) return;
-    let menu: HTMLDivElement | null = null;
     let notice: HTMLDivElement | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    let previousFocus: HTMLElement | null = null;
-    const close = () => { menu?.remove(); menu = null; previousFocus?.focus(); previousFocus = null; };
     const notify = (message: string, error = false) => {
       notice?.remove(); clearTimeout(timer);
       notice = document.createElement("div");
@@ -85,6 +81,6 @@ export default definePluginApp(app => {
     const observer = new MutationObserver(decorate);
     observer.observe(document.body, { childList: true, subtree: true });
     window.addEventListener("contextmenu", contextmenu, { capture: true, signal });
-    return () => { observer.disconnect(); for (const item of injected) { delete item.parentElement?.dataset.windowsFileLinks; item.remove(); } close(); notice?.remove(); clearTimeout(timer); };
+    return () => { observer.disconnect(); for (const item of injected) { delete item.parentElement?.dataset.windowsFileLinks; item.remove(); } notice?.remove(); clearTimeout(timer); };
   } });
 });
